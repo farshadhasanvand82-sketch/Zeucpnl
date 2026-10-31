@@ -18,16 +18,17 @@ from telegram.ext import (
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8963035503:AAFIAmyoKPqD70E4PYUjQVKz-lCKv40Ob_A")
+# توکن ربات تلگرام که ارسال کردید
+TELEGRAM_TOKEN = "8963035503:AAFIAmyoKPqD70E4PYUjQVKz-lCKv40Ob_A"
 
 # مراحل دریافت اطلاعات ورود در تلگرام
 GET_USERNAME, GET_PASSWORD = range(2)
 
-# دیکشنری‌های ذخیره موقت تنظیمات هر کاربر (در صورت استفاده چند کاربره یا تک‌کاربره)
-user_clients = {}      # ذخیره کلاینت اینستاگرام هر کاربر: {chat_id: Client}
-user_rules = {}        # ذخیره قوانین دایرکت: {chat_id: {keyword: response}}
-user_comment_rules = {}# ذخیره قوانین کامنت: {chat_id: {keyword: response}}
-user_temp_data = {}    # ذخیره موقت یوزرنیم برای لاگین: {chat_id: username}
+# ذخیره تنظیمات کاربران
+user_clients = {}      
+user_rules = {}        
+user_comment_rules = {}
+user_temp_data = {}    
 
 # --- ۱. روند احراز هویت تعاملی (گرفتن ایدی و پسورد) ---
 
@@ -156,7 +157,6 @@ async def set_comment_rule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- ۴. بخش پس‌زمینه مانیتورینگ دایرکت و کامنت اینستاگرام ---
 
 def background_monitor(app):
-    """تابع پس‌زمینه برای بررسی دایرکت‌ها و کامنت‌ها"""
     while True:
         time.sleep(10)
         for chat_id, cl in list(user_clients.items()):
@@ -182,7 +182,6 @@ def background_monitor(app):
                             c_rules = user_comment_rules.get(chat_id, {})
                             for kw, cres in c_rules.items():
                                 if kw in ctxt:
-                                    # پاسخ به کامنت یا ارسال دایرکت به کامنت‌گذار
                                     cl.media_comment_reply(media.pk, comment.pk, text=cres)
                                     logger.info(f"پاسخ کامنت ارسال شد برای کلمه: {kw}")
                                     break
@@ -192,7 +191,6 @@ def background_monitor(app):
 if __name__ == '__main__':
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
-    # هندلر مکالمه برای دریافت یوزرنیم و پسورد به ترتیب
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -207,7 +205,6 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("setdirect", set_direct_rule))
     app.add_handler(CommandHandler("setcomment", set_comment_rule))
     
-    # استارت ترد پس‌زمینه برای چک کردن اینستاگرام
     t = threading.Thread(target=background_monitor, args=(app,), daemon=True)
     t.start()
     
