@@ -65,6 +65,9 @@ async def receive_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ در حال اتصال به اینستاگرام، لطفاً چند لحظه صبر کنید...")
     
     cl = Client()
+    # تنظیم نسخه جدیدتر اینستاگرام برای عبور از فیلتر نسخه قدیمی
+    cl.set_version("319.0.0.35.109")
+    
     try:
         cl.login(username, password)
         user_clients[chat_id] = cl
