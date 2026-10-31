@@ -15,13 +15,11 @@ from telegram.ext import (
     filters
 )
 
-# تنظیمات لاگینگ
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TELEGRAM_TOKEN = "8963035503:AAFIAmyoKPqD70E4PYUjQVKz-lCKv40Ob_A"
 
-# راه‌اندازی Flask برای اینکه رندر فکر کند این یک وب‌سایت است و پورت باز کند
 app_flask = Flask(__name__)
 
 @app_flask.route('/')
@@ -32,15 +30,12 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app_flask.run(host="0.0.0.0", port=port)
 
-# مراحل دریافت اطلاعات ورود در تلگرام
 GET_USERNAME, GET_PASSWORD = range(2)
 
 user_clients = {}      
 user_rules = {}        
 user_comment_rules = {}
 user_temp_data = {}    
-
-# --- ۱. روند احراز هویت تعاملی (گرفتن ایدی و پسورد) ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -65,8 +60,6 @@ async def receive_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ در حال اتصال به اینستاگرام، لطفاً چند لحظه صبر کنید...")
     
     cl = Client()
-    # تنظیم نسخه جدیدتر اینستاگرام برای عبور از فیلتر نسخه قدیمی
-    cl.set_version("319.0.0.35.109")
     
     try:
         cl.login(username, password)
@@ -81,8 +74,6 @@ async def receive_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"خطا در لاگین: {e}")
         await update.message.reply_text(f"❌ خطا در لاگین: {e}\n\nلطفاً دوباره با دستور /start امتحان کنید.")
         return ConversationHandler.END
-
-# --- ۲. منوی شیشه‌ای (Inline Keyboard) ---
 
 async def show_main_menu_from_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -131,8 +122,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         await query.edit_message_text(msg, parse_mode="Markdown")
 
-# --- ۳. دستورات ثبت قوانین دایرکت و کامنت ---
-
 async def set_direct_rule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     text = update.message.text.replace("/setdirect", "").strip()
@@ -167,14 +156,11 @@ async def set_comment_rule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(f"✅ پاسخ خودکار کامنت ثبت شد:\n🔑 `{kw}` ➔ 💬 `{res}`", parse_mode="Markdown")
 
-# --- ۴. بخش پس‌زمینه مانیتورینگ دایرکت و کامنت اینستاگرام ---
-
 def background_monitor():
     while True:
         time.sleep(10)
         for chat_id, cl in list(user_clients.items()):
             try:
-                # بررسی دایرکت‌ها
                 threads = cl.direct_threads(amount=3)
                 for thread in threads:
                     last_msg = thread.messages[0]
@@ -185,7 +171,6 @@ def background_monitor():
                             cl.direct_send(rules[txt], thread_ids=[thread.id])
                             logger.info(f"پاسخ دایرکت ارسال شد برای کلمه: {txt}")
                 
-                # بررسی کامنت آخرین پست‌ها
                 medias = cl.user_medias(cl.user_id, amount=2)
                 for media in medias:
                     comments = cl.media_comments(media.pk, amount=5)
@@ -202,15 +187,12 @@ def background_monitor():
                 logger.error(f"خطا در مانیتورینگ پس‌زمینه: {e}")
 
 if __name__ == '__main__':
-    # ۱. استارت سرور Flask در ترد جداگانه برای باز نگه داشتن پورت رندر
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
 
-    # ۲. استارت ترد مانیتورینگ اینستاگرام
     instagram_thread = threading.Thread(target=background_monitor, daemon=True)
     instagram_thread.start()
 
-    # ۳. راه‌اندازی ربات تلگرام
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     conv_handler = ConversationHandler(
