@@ -2,6 +2,7 @@ import logging
 import os
 import time
 import threading
+from flask import Flask
 from instagrapi import Client
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -18,13 +19,22 @@ from telegram.ext import (
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# توکن ربات تلگرام که ارسال کردید
 TELEGRAM_TOKEN = "8963035503:AAFIAmyoKPqD70E4PYUjQVKz-lCKv40Ob_A"
+
+# راه‌اندازی Flask برای اینکه رندر فکر کند این یک وب‌سایت است و پورت باز کند
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def home():
+    return "Instagram Automation Bot is Running Online!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app_flask.run(host="0.0.0.0", port=port)
 
 # مراحل دریافت اطلاعات ورود در تلگرام
 GET_USERNAME, GET_PASSWORD = range(2)
 
-# ذخیره تنظیمات کاربران
 user_clients = {}      
 user_rules = {}        
 user_comment_rules = {}
@@ -156,7 +166,7 @@ async def set_comment_rule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- ۴. بخش پس‌زمینه مانیتورینگ دایرکت و کامنت اینستاگرام ---
 
-def background_monitor(app):
+def background_monitor():
     while True:
         time.sleep(10)
         for chat_id, cl in list(user_clients.items()):
@@ -189,6 +199,15 @@ def background_monitor(app):
                 logger.error(f"خطا در مانیتورینگ پس‌زمینه: {e}")
 
 if __name__ == '__main__':
+    # ۱. استارت سرور Flask در ترد جداگانه برای باز نگه داشتن پورت رندر
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+
+    # ۲. استارت ترد مانیتورینگ اینستاگرام
+    instagram_thread = threading.Thread(target=background_monitor, daemon=True)
+    instagram_thread.start()
+
+    # ۳. راه‌اندازی ربات تلگرام
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     conv_handler = ConversationHandler(
@@ -205,8 +224,5 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("setdirect", set_direct_rule))
     app.add_handler(CommandHandler("setcomment", set_comment_rule))
     
-    t = threading.Thread(target=background_monitor, args=(app,), daemon=True)
-    t.start()
-    
-    print("ربات پاسخگو آنلاین و آماده به کار است...")
+    print("ربات و وب‌سایت مانیتورینگ پورت فعال شدند...")
     app.run_polling(drop_pending_updates=True)
